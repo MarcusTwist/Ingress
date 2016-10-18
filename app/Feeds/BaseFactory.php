@@ -119,7 +119,7 @@ class BaseFactory
         $links[$ii]['from']['coordinates'] = $fields[0]->latLngs[0];
         $links[$ii]['to']['coordinates'] = $fields[1]->latLngs[0];
         $ii++;
-        
+
         for ($home=0; $home < 2; $home++) { 
             for ($i=0; $i <count($fields)-1 ; $i++) { 
                 if ($home == 0 ){
@@ -158,6 +158,19 @@ class BaseFactory
                 }
             }
         }
+     //   dd($links);
+        return $links;
+    }
+
+    public function rawToLinks($rawfields)
+    {
+        $ii=0;
+        foreach ($rawfields as $rawfield) {
+            $links[$ii]['from']['coordinates'] = $rawfield->latLngs[0];
+            $links[$ii]['to']['coordinates'] = $rawfield->latLngs[1];
+            $ii++;
+        }
+       // dd($links);
         return $links;
     }
 

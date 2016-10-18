@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\View;
+use App\Feeds\BaseFactory;
 
 class OnionController extends Controller
 {
@@ -33,20 +34,28 @@ class OnionController extends Controller
     {
         $bookmarks = $request->get('bookmarks');
         $lines = $request->get('links');
-        $result = $this->process($bookmarks, $lines);
-        $json = $this->toJson($result);
+        $version = $request->get('version');
 
-        $view = view::make('onionResult')->with(['links' => $result]);
-        $view->nest('json', 'json')->with(['json' => $json]);
+        $linkplan = $this->process($bookmarks, $lines, $version);
+        $drawtools = $this->toJson($linkplan);
+        $intel = $this->makeIntelLink($linkplan);
+
+        $view = view::make('onionResult')->with(['links' => $linkplan, 'drawtools' => $drawtools, 'bookmarks' => $bookmarks, 'intel' => $intel, 'version' => $version]);
+
         return $view;
     }
 
-    public function process($bookmarks, $lines)
+    public function process($bookmarks, $lines, $version)
     {
         $bookmarks = $this->processBookmarks($bookmarks);
-        $links = $this->processClassic($lines);
+
+        if ($version == 'Rose') {
+            $links = $this->processRose($lines);
+        } elseif ($version == 'Onion') {
+            $links = $this->processOnion($lines);
+        }
         $result = $this->join($bookmarks, $links);
-       // $this->toJson($result);
+        
         return $result;
     }
 
@@ -66,116 +75,50 @@ class OnionController extends Controller
         return $portal;
     }
 
-    public function processClassic($rawFields)
+    public function processOnion($rawFields)
     {
         $fields = json_decode($rawFields);
-        $ii=3;
-        $portal = 1;
-        $i = $city = 0;
-        $iterationsTotal = (count($fields)-1)*count($fields);
-        $first = true;
-        if ($first) {
-            $links[]['to']['coordinates'] = $fields[0]->latLngs[1];   //2A
-            $links[]['to']['coordinates'] = $fields[0]->latLngs[2];  //3A
-            $links[]['to']['coordinates'] = $fields[0]->latLngs[2];  //3A
-            $first = false;
+        $factory = new BaseFactory;
+        
+        if (count($fields[0]->latLngs) == 2 ) {
+            $result = $factory->rawToLinks($fields);
+        } else {
+            $result = $factory->makeOnion($fields);
         }
+        return $result;
+    }
 
-        for ($cp=1; $cp < count($fields)+1; $cp++) { 
-                
-            for ($cf=0; $cf <count($fields) ; $cf++) { 
-                if($i==0){
-                    $to['city'] = $city+1;
-                    $to['portal'] = $portal-1;
-                    $links[]['to']['coordinates'] = $fields[$to['portal']]->latLngs[$to['city']]; //1B
-                    $i++;
-                }elseif($i==1){
-                    $to['city'] = $city+2;
-                    $to['portal'] = $portal-1;
-                    $links[]['to']['coordinates'] = $fields[$to['portal']]->latLngs[$to['city']]; //1B
-                    $i++;
-                }elseif($i==2){
-                    $to['city'] = $city;
-                    $to['portal'] = $portal;
-                    if ( !isset($fields[$to['portal']])){
-                        break;
-                    }
-                    $links[]['to']['coordinates'] = $fields[$to['portal']]->latLngs[$to['city']]; //1B
-                    $i++;
-                }elseif($i==3){
-                    $to['city'] = $city+2;
-                    $to['portal'] = $portal-1;
-                    $links[]['to']['coordinates'] = $fields[$to['portal']]->latLngs[$to['city']]; //1B
-                    $i++;
-                }elseif($i==4){
-                    $to['city'] = $city;
-                    $to['portal'] = $portal;
-                    $links[]['to']['coordinates'] = $fields[$to['portal']]->latLngs[$to['city']]; //1B
-                    $i++;
-                }elseif($i==5){
-                    $to['city'] = $city+1;
-                    $to['portal'] = $portal;
-                    $links[]['to']['coordinates'] = $fields[$to['portal']]->latLngs[$to['city']]; //1B
-                    $i=0;
-                }
-            }
-            $portal++;
+
+    public function processRose($rawFields)
+    {
+        $fields = json_decode($rawFields);
+        $factory = new BaseFactory;
+        
+        if (count($fields[0]->latLngs) == 2 ) {
+            $result = $factory->rawToLinks($fields);
+        } else {
+            $result = $factory->makeRose($fields);
         }
-        $portal = 1;
-        $iterations = $city = 0;
-        $first = true;
-        if ($first) {
-            $links[$iterations]['from']['coordinates'] = $fields[0]->latLngs[0]; //1A
-            $iterations++;
-            $links[$iterations]['from']['coordinates'] = $fields[0]->latLngs[0]; //1A
-            $iterations++;
-            $links[$iterations]['from']['coordinates'] = $fields[0]->latLngs[1];  //2A
-            $iterations++;
-            $first = false;
-        }
-        $links[$iterations]['from']['coordinates'] = $fields[$portal]->latLngs[$city]; //1B
-            
-        for ($i=1; $i < $iterationsTotal+1; $i++) { 
-            $links[$iterations]['from']['coordinates'] = $fields[$portal]->latLngs[$city]; //1B
-                
-            if ( $i% 2==0) {
-                $city++;
-                if ($city == 3){
-                    $city=0;
-                }
-            } 
-
-            if ($i% 6 ==0) {
-                $portal++;
-                if ($portal == 6){
-                    $portal = 0;
-                }
-            }
-            $iterations++;
-        }
-
-        $unset = count($links)-1;
-        unset($links[$unset]);
-        $unset = $unset-1;
-        unset($links[$unset]);
-
-        return $links;
+        return $result;
     }
 
     public function join($bookmarks, $links) 
     {
         $portals = $this->bookmarksToPortals($bookmarks);
-        
+    
         for ($i=0; $i < count($links); $i++) { 
+
             $links[$i]['from']['latLng'] = $links[$i]['from']['coordinates']->lat. ','. $links[$i]['from']['coordinates']->lng;
             $links[$i]['to']['latLng'] = $links[$i]['to']['coordinates']->lat. ','. $links[$i]['to']['coordinates']->lng;
-            $links[$i]['from']['name'] = array_search($links[$i]['from']['latLng'], array_column($bookmarks, 'label'));
-           
+            //$links[$i]['from']['name'] = array_search($links[$i]['from']['latLng'], array_column($bookmarks, 'name'));
+            
             $portalfrom = $this->findPortal($links[$i]['from']['latLng'], $portals);
+            
             $links[$i]['from']['name'] = $portalfrom->label;
             $links[$i]['from']['anker'] = $portalfrom->anker;
            
             $portalto = $this->findPortal($links[$i]['to']['latLng'], $portals);
+            
             $links[$i]['to']['name'] = $portalto->label;
             $links[$i]['to']['anker'] = $portalto->anker;
         }
@@ -210,7 +153,7 @@ class OnionController extends Controller
             }
         }
 
-        return 'no portal found';
+        return null;
     }
 
     public function toJson($linkplan)
@@ -231,5 +174,24 @@ class OnionController extends Controller
         $singleLink->latLngs[1] = $link['to']['coordinates'];
         $singleLink->color = '#a24ac3';
         return $singleLink;
+    }
+
+    public function makeIntelLink($portals)
+    {
+        $ii=0;
+        foreach ($portals as $fromTo) {
+            foreach ($fromTo as $portal) {
+                $newPortal[$ii]['anker'] = $portal['anker'];
+                $newPortal[$ii]['name'] = $portal['name'];
+                $newPortal[$ii]['intel'] = 'https://www.ingress.com/intel?ll='. $portal['latLng'] .'&z=17&pll='. $portal['latLng'];
+                $newPortal[$ii]['maps'] = 'https://www.google.com/maps?q='. $portal['latLng'];
+                $ii++;
+            }
+        }
+        $unique = array_unique($newPortal, SORT_REGULAR);
+        $factory = new BaseFactory;
+        $unique = $factory->aasort($unique, 'anker');
+        $unique = array_values(($unique));
+        return $unique;
     }
 }
