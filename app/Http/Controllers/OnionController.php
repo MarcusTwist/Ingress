@@ -16,7 +16,7 @@ class OnionController extends Controller
      */
     public function __construct()
     {
-        $this->middleware('auth');
+        //$this->middleware('auth');
     }
 
     /**
@@ -35,6 +35,7 @@ class OnionController extends Controller
         $bookmarks = $request->get('bookmarks');
         $lines = $request->get('links');
         $version = $request->get('version');
+        $lines = json_decode($lines);
 
         $linkplan = $this->process($bookmarks, $lines, $version);
         $drawtools = $this->toJson($linkplan);
@@ -79,7 +80,12 @@ class OnionController extends Controller
     {
         $fields = json_decode($rawFields);
         $factory = new BaseFactory;
-        $result = $factory->makeOnion($fields);
+        
+        if (count($fields[0]->latLngs) == 2 ) {
+            $result = $factory->rawToLinks($fields);
+        } else {
+            $result = $factory->makeOnion($fields);
+        }
         return $result;
     }
 
@@ -88,25 +94,32 @@ class OnionController extends Controller
     {
         $fields = json_decode($rawFields);
         $factory = new BaseFactory;
-        $result = $factory->makeRose($fields);
         
+        if (count($fields[0]->latLngs) == 2 ) {
+            $result = $factory->rawToLinks($fields);
+        } else {
+            $result = $factory->makeRose($fields);
+        }
         return $result;
     }
 
     public function join($bookmarks, $links) 
     {
         $portals = $this->bookmarksToPortals($bookmarks);
-        
+    
         for ($i=0; $i < count($links); $i++) { 
+
             $links[$i]['from']['latLng'] = $links[$i]['from']['coordinates']->lat. ','. $links[$i]['from']['coordinates']->lng;
             $links[$i]['to']['latLng'] = $links[$i]['to']['coordinates']->lat. ','. $links[$i]['to']['coordinates']->lng;
-            $links[$i]['from']['name'] = array_search($links[$i]['from']['latLng'], array_column($bookmarks, 'label'));
-           
+            //$links[$i]['from']['name'] = array_search($links[$i]['from']['latLng'], array_column($bookmarks, 'name'));
+            
             $portalfrom = $this->findPortal($links[$i]['from']['latLng'], $portals);
+            
             $links[$i]['from']['name'] = $portalfrom->label;
             $links[$i]['from']['anker'] = $portalfrom->anker;
            
             $portalto = $this->findPortal($links[$i]['to']['latLng'], $portals);
+            
             $links[$i]['to']['name'] = $portalto->label;
             $links[$i]['to']['anker'] = $portalto->anker;
         }
@@ -141,7 +154,7 @@ class OnionController extends Controller
             }
         }
 
-        return 'no portal found';
+        return null;
     }
 
     public function toJson($linkplan)

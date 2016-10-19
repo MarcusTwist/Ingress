@@ -110,56 +110,115 @@ class BaseFactory
 
     public function makeOnion($rawFields)
     {
-        //dd($rawFields);
-        $fields = $rawFields;
-//        $ankers = [1,2,3];
+        $fields = $rawFields; //same as the corner ident
+        $corners = ['A','B','C','D','E','F'];//corner ident
+        $portals = [1,2,3];//portal ident
 
         $home= $ii= $portal = $anker = 0;
-        
         $links[$ii]['from']['coordinates'] = $fields[0]->latLngs[0];
-        $links[$ii]['to']['coordinates'] = $fields[1]->latLngs[0];
+        $links[$ii]['to']['coordinates'] = $fields[0]->latLngs[1];
         $ii++;
 
-        for ($home=0; $home < 2; $home++) { 
-            for ($i=0; $i <count($fields)-1 ; $i++) { 
+        for ($home=0; $home < 3; $home++) { 
+            for ($c=0; $c <count($fields) ; $c++) { 
+
                 if ($home == 0 ){
-                    $links[$ii]['from']['coordinates'] = $fields[$home]->latLngs[0];
-                    $links[$ii]['to']['coordinates'] = $fields[$i]->latLngs[2];
+                    $links[$ii]['from']['coordinates'] = $fields[0]->latLngs[0];
+                    $links[$ii]['to']['coordinates'] = $fields[$c]->latLngs[count($portals)-1];
+                    
                 } elseif ($home == 1) {
                     $links[$ii]['from']['coordinates'] = $fields[0]->latLngs[1];
-                    //$links[$ii]['to']['coordinates'] = $fields[$i]->latLngs[count($fields)-1];
-                    $links[$ii]['to']['coordinates'] = $fields[$i]->latLngs[1];
+                    $links[$ii]['to']['coordinates'] = $fields[$c]->latLngs[count($portals)-1];
                 }
                 $ii++;
             }
+
             if ($home == 1) {
-                for ($i=1; $i <count($fields) ; $i++) { 
+
+                for ($i=1; $i <count($corners) ; $i++) { 
                     $links[$ii]['from']['coordinates'] = $fields[0]->latLngs[1];
                     $links[$ii]['to']['coordinates'] = $fields[$i]->latLngs[0];
                     $ii++;
                 }
 
-                for ($i=1; $i <count($fields) ; $i++) { 
-                    $links[$ii]['from']['coordinates'] = $fields[count($fields)-1]->latLngs[2];
+                for ($i=1; $i <count($corners) ; $i++) { 
+                    $links[$ii]['from']['coordinates'] = $fields[count($corners)-1]->latLngs[count($portals)-1];
                     $links[$ii]['to']['coordinates'] = $fields[$i]->latLngs[0];
                     $ii++;
                 }
 
-                for ($i=1; $i <count($fields) ; $i++) { 
-                    $links[$ii]['from']['coordinates'] = $fields[count($fields)-1]->latLngs[0];
+                for ($i=1; $i <count($corners) ; $i++) { 
+                    $links[$ii]['from']['coordinates'] = $fields[count($corners)-1]->latLngs[0];
                     $links[$ii]['to']['coordinates'] = $fields[$i]->latLngs[1];
                     $ii++;
                 }
 
-                for ($i=1; $i <count($fields) ; $i++) { 
-                    $links[$ii]['from']['coordinates'] = $fields[count($fields)-1]->latLngs[2];
+                for ($i=1; $i <count($corners) ; $i++) { 
+                    $links[$ii]['from']['coordinates'] = $fields[count($corners)-1]->latLngs[count($portals)-1];
                     $links[$ii]['to']['coordinates'] = $fields[$i]->latLngs[1];
                     $ii++;
                 }
             }
         }
-     //   dd($links);
+
         return $links;
+    }
+
+    public function makeOnionRaw($rawFields)
+    {
+        $corners = ['A','B','C','D','E','F'];//corner ident
+        $portals = [1,2,3];//portal ident
+
+        $home= $ii= $portal = $anker = 0;
+        
+        $links[$ii]['from']['coordinates'] = $portals[0].$corners[0];
+        $links[$ii]['to']['coordinates'] = $portals[1].$corners[0];
+        $ii++;
+
+        for ($home=0; $home < count($portals); $home++) { 
+            for ($c=0; $c <count($corners) ; $c++) { 
+
+                if ($home == 0 ){
+                    $links[$ii]['from']['coordinates'] = $portals[0].$corners[0];
+                    $links[$ii]['to']['coordinates'] = $portals[count($portals)-1].$corners[$c];
+                    
+                } elseif ($home == 1) {
+                    $links[$ii]['from']['coordinates'] = $portals[1].$corners[0];
+                    $links[$ii]['to']['coordinates'] = $portals[count($portals)-1].$corners[$c];
+                }
+                $ii++;
+            }
+        
+            if ($home == 1) {
+
+                for ($i=1; $i <count($corners) ; $i++) { 
+                    $links[$ii]['from']['coordinates'] = $portals[1].$corners[0];
+                    $links[$ii]['to']['coordinates'] = $portals[0].$corners[$i];
+                    $ii++;
+                }
+
+                for ($i=1; $i <count($corners) ; $i++) { 
+                    $links[$ii]['from']['coordinates'] = $portals[count($portals)-1].$corners[count($corners)-1];
+                    $links[$ii]['to']['coordinates'] = $portals[0].$corners[$i];
+                    $ii++;
+                }
+
+                for ($i=1; $i <count($corners) ; $i++) { 
+                    $links[$ii]['from']['coordinates'] = $portals[0].$corners[count($corners)-1];
+                    $links[$ii]['to']['coordinates'] = $portals[1].$corners[$i];
+                    $ii++;
+                }
+
+                for ($i=1; $i <count($corners) ; $i++) { 
+                    $links[$ii]['from']['coordinates'] = $portals[count($portals)-1].$corners[count($corners)-1];
+                    $links[$ii]['to']['coordinates'] = $portals[1].$corners[$i];
+                    $ii++;
+                }
+            }
+        }
+       dd($links);
+        return $links;
+
     }
 
     public function rawToLinks($rawfields)
@@ -170,7 +229,7 @@ class BaseFactory
             $links[$ii]['to']['coordinates'] = $rawfield->latLngs[1];
             $ii++;
         }
-       // dd($links);
+
         return $links;
     }
 
